@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: studio-flow-backend
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/studioflow}
+      auto-index-creation: true
+
+server:
+  port: ${PORT:8080}
+
+studioflow:
+  jwt:
+    secret: ${JWT_SECRET:mBqQ9kX8vN2wZ7pR4tY6uC1sD3fG5hJ8kL0mN2pQ4rS6tU8vW0xY2zA4bC6dE8fG}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
