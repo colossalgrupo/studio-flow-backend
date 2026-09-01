@@ -1,0 +1,88 @@
+# Deploy automático para o Google Cloud Run ao dar push na branch principal.
+#
+# DESABILITADO POR PADRÃO: este workflow só roda de fato quando os secrets
+# abaixo existirem no repositório (Settings > Secrets and variables > Actions).
+# Enquanto eles não existirem, o job falha rápido no passo de validação em vez
+# de tentar autenticar com credenciais vazias.
+#
+# Secrets necessários:
+#   GCP_PROJECT_ID        - ID do projeto no Google Cloud
+#   GCP_WORKLOAD_IDP       - (recomendado) provider da Workload Identity Federation,
+#                            no formato projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>
+#   GCP_SERVICE_ACCOUNT     - e-mail da service account usada no deploy
+#   GCP_SA_KEY              - (alternativa mais simples, porém menos segura, à WIF)
+#                            chave JSON da service account, se não usar Workload Identity Federation
+#
+# Variáveis de ambiente da aplicação (MONGODB_URI, JWT_SECRET, etc.) devem ser
+# configuradas diretamente no serviço do Cloud Run (veja o README, seção "Deploy"),
+# não neste workflow.
+#
+# Para habilitar: configure os secrets acima e remova o passo "Verificar secrets
+# configurados" (ou apenas deixe-o — ele só interrompe o job se algo faltar).
+
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  SERVICE_NAME: studio-flow-backend
+  REGION: southamerica-east1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # necessário para Workload Identity Federation
+
+    steps:
+      - name: Verificar secrets configurados
+        run: |
+          if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
+            echo "GCP_PROJECT_ID não configurado. Configure os secrets do repositório antes de habilitar este workflow (veja os comentários no topo deste arquivo)."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Autenticar no Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDP }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          # Alternativa (menos recomendada) sem WIF: comente as duas linhas acima
+          # e descomente a linha abaixo, usando uma chave JSON de service account.
+          # credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configurar Docker para o Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build e push da imagem
+        run: |
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/cloud-run-source-deploy/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy no Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image "$IMAGE" \
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --region "${{ env.REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances=0 \
+            --max-instances=2 \
+            --memory=512Mi
+          # As variáveis de ambiente (MONGODB_URI, JWT_SECRET, ...) NÃO são
+          # definidas aqui de propósito: configure-as uma vez no serviço do
+          # Cloud Run (Console ou `gcloud run services update`) para não
+          # precisar guardá-las como secrets do GitHub. Veja o README.

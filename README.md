@@ -165,6 +165,72 @@ O token é obtido em `/api/auth/login` ou `/api/auth/registrar` e carrega o `tip
 
 A integração com o provedor de pagamento fica atrás da interface `PaymentGateway` (`com.studioflow.backend.pagamento.gateway`), hoje implementada por `MockPaymentGateway` (aprova tudo). Trocar por Asaas/Pagar.me/Mercado Pago não exige mudanças no domínio.
 
+## Deploy
+
+### Por que Cloud Run
+
+O alvo de deploy é o **Google Cloud Run** rodando a imagem Docker do `Dockerfile` deste repositório, com `--min-instances=0`: sem tráfego, a aplicação escala a zero instâncias e não há cobrança de compute. Combinado com o MongoDB Atlas free tier (M0) para persistência, o custo de operação fica próximo de zero para um volume de MVP — você paga só pelas requisições/CPU realmente consumidas quando há uso.
+
+### Build da imagem
+
+O `Dockerfile` é multi-stage: um estágio com `gradle:8.14.3-jdk21-alpine` compila o jar, e o estágio final usa `eclipse-temurin:21-jre-alpine`, copiando só o jar — imagem final enxuta, sem JDK nem Gradle. A aplicação escuta na porta definida por `PORT` (Cloud Run injeta essa variável automaticamente; localmente, sem `PORT` definido, cai para `8080`).
+
+```bash
+docker build -t studio-flow-backend .
+docker run -p 8080:8080 -e MONGODB_URI="..." -e JWT_SECRET="..." studio-flow-backend
+```
+
+### Deploy manual via `gcloud`
+
+Pré-requisitos: [gcloud CLI](https://cloud.google.com/sdk/docs/install) autenticado (`gcloud auth login`) e um projeto GCP com as APIs Cloud Run e Artifact Registry/Cloud Build habilitadas.
+
+```bash
+gcloud run deploy studio-flow-backend \
+  --source . \
+  --region southamerica-east1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --min-instances=0 \
+  --max-instances=2 \
+  --memory=512Mi
+```
+
+- `--min-instances=0`: escala a zero quando não há tráfego — nenhuma cobrança de compute em repouso. É o principal fator de custo mínimo.
+- `--max-instances=2`: teto razoável para um MVP, evita custo inesperado em caso de pico/loop de tráfego.
+- `--memory=512Mi`: suficiente para uma API Spring Boot com carga baixa; ajuste se necessário.
+- `--source .` builda a imagem a partir do `Dockerfile` via Cloud Build, sem precisar configurar um registry manualmente.
+
+### Variáveis de ambiente no Cloud Run
+
+Configure os segredos e a connection string do banco **no serviço do Cloud Run**, não no código nem no workflow de CI:
+
+```bash
+gcloud run services update studio-flow-backend \
+  --region southamerica-east1 \
+  --update-env-vars MONGODB_URI="mongodb+srv://<usuario>:<senha>@<cluster>.mongodb.net/studioflow?retryWrites=true&w=majority" \
+  --update-env-vars JWT_SECRET="<segredo forte e aleatório>" \
+  --update-env-vars JWT_EXPIRATION_MS=86400000
+```
+
+`PORT` **não** deve ser definida manualmente — o Cloud Run já a injeta.
+
+### MongoDB
+
+O banco continua sendo o **MongoDB Atlas free tier (M0)**, externo ao Cloud Run e já gratuito — nenhuma configuração adicional de infraestrutura de banco é necessária para o deploy.
+
+### Deploy automático via GitHub Actions (opcional)
+
+Existe um workflow em `.github/workflows/deploy.yml` que builda a imagem e faz o deploy no Cloud Run a cada push na branch principal. Ele vem **desabilitado por padrão** (falha rápido na validação) até que os seguintes secrets sejam configurados em Settings → Secrets and variables → Actions do repositório:
+
+| Secret | Descrição |
+|---|---|
+| `GCP_PROJECT_ID` | ID do projeto no Google Cloud |
+| `GCP_WORKLOAD_IDP` | Provider da Workload Identity Federation (recomendado, evita chave estática) |
+| `GCP_SERVICE_ACCOUNT` | E-mail da service account usada no deploy |
+| `GCP_SA_KEY` | Alternativa à WIF: chave JSON da service account (menos recomendado) |
+
+Nenhuma credencial real é necessária até que você decida habilitar o workflow — o comportamento de deploy manual acima funciona independentemente disso.
+
 ## Fora do escopo desta etapa
 
 Notificações, avaliações, painel administrativo da plataforma e integração real de pagamento não foram implementados.
