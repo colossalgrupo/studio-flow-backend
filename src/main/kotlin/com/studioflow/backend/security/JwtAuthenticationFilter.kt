@@ -28,11 +28,16 @@ class JwtAuthenticationFilter(
 		if (jwtService.isTokenValid(token) && SecurityContextHolder.getContext().authentication == null) {
 			val email = jwtService.extractSubject(token)
 			val userDetails = userDetailsService.loadUserByUsername(email)
-			val authentication = UsernamePasswordAuthenticationToken(
-				userDetails, null, userDetails.authorities
-			)
-			authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
-			SecurityContextHolder.getContext().authentication = authentication
+			val passwordChangedAt = userDetails.usuario.passwordChangedAt
+			val issuedAt = jwtService.extractIssuedAt(token).toInstant()
+
+			if (passwordChangedAt == null || passwordChangedAt.isBefore(issuedAt)) {
+				val authentication = UsernamePasswordAuthenticationToken(
+					userDetails, null, userDetails.authorities
+				)
+				authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
+				SecurityContextHolder.getContext().authentication = authentication
+			}
 		}
 
 		filterChain.doFilter(request, response)

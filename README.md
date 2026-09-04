@@ -73,6 +73,11 @@ docker-compose up -d
 | `JWT_SECRET` | chave de desenvolvimento embutida | Segredo usado para assinar os tokens JWT |
 | `JWT_EXPIRATION_MS` | `86400000` (24h) | Validade do token JWT |
 | `PORT` | `8080` | Porta HTTP da aplicação |
+| `RESEND_API_KEY` | *(vazio)* | Chave de API do [Resend](https://resend.com) usada para enviar e-mail de verificação de conta e de redefinição de senha. Sem essa variável, o envio é apenas logado (aviso) e o cadastro/reset de senha continuam funcionando normalmente — o usuário só não recebe o e-mail. |
+| `EMAIL_FROM` | `Studio Schedule <naoresponda@studioschedule.com>` | Remetente usado nos e-mails transacionais. **Precisa ser um endereço de um domínio verificado no Resend** — o valor padrão é um placeholder; troque pelo domínio real do produto assim que ele for verificado no painel do Resend. |
+| `FRONTEND_URL` | `https://studio-schedule-web.vercel.app` | Base usada para montar os links de verificação de e-mail (`/verify-email?token=...`) e redefinição de senha (`/reset-password?token=...`) enviados por e-mail, apontando para o `studio-flow-web`. |
+
+Veja também `.env.example` para uma lista pronta para copiar.
 
 ### 3. Subir a aplicação
 
@@ -96,7 +101,25 @@ Todas as rotas protegidas esperam o header:
 Authorization: Bearer <token>
 ```
 
-O token é obtido em `/api/auth/login` ou `/api/auth/registrar` e carrega o `tipoPerfil` do usuário, usado para autorizar rotas restritas a `EMPREENDEDOR` ou `CLIENTE`.
+O token é obtido em `/api/auth/login` ou `/api/auth/verify-email` e carrega o `tipoPerfil` do usuário (`iat` incluso), usado para autorizar rotas restritas a `EMPREENDEDOR` ou `CLIENTE`.
+
+### Verificação de e-mail
+
+Toda conta nasce com `status = PENDING_VERIFICATION` e recebe um e-mail com link de confirmação. `POST /api/auth/login` rejeita contas ainda não verificadas. Fluxo:
+
+1. `POST /api/auth/registrar` → cria a conta, envia o e-mail de verificação, **não** retorna JWT.
+2. Usuário clica no link (`${FRONTEND_URL}/verify-email?token=...`) → o frontend chama `GET /api/auth/verify-email?token=...`, que ativa a conta (`status = ACTIVE`) e já retorna o JWT (login automático).
+3. Se o e-mail não chegou ou o link expirou, `POST /api/auth/resend-verification` reenvia — a resposta é sempre a mesma mensagem genérica, para não revelar se o e-mail existe na base.
+
+### Recuperação de senha
+
+1. `POST /api/auth/forgot-password` → se o e-mail existir, gera um token válido por 2h e envia o link (`${FRONTEND_URL}/reset-password?token=...`). Resposta sempre genérica, mesmo se o e-mail não existir.
+2. `GET /api/auth/reset-password/validate?token=...` → usado pela tela de redefinição para avisar cedo se o link é inválido/expirado, sem alterar nada.
+3. `POST /api/auth/reset-password` → troca a senha (mínimo 8 caracteres) e invalida todas as sessões antigas: qualquer JWT emitido antes da troca (`iat` < `passwordChangedAt`) passa a ser rejeitado pelo filtro de autenticação.
+
+### E-mail transacional
+
+Os e-mails de verificação de conta e redefinição de senha são enviados via [Resend](https://resend.com) (`EmailService`, usando `RestClient` do Spring — sem SDK adicional). Ver variáveis `RESEND_API_KEY`, `EMAIL_FROM` e `FRONTEND_URL` na seção de variáveis de ambiente acima.
 
 ## Endpoints implementados
 
@@ -104,8 +127,13 @@ O token é obtido em `/api/auth/login` ou `/api/auth/registrar` e carrega o `tip
 
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/api/auth/registrar` | Cria um usuário (Empreendedor ou Cliente) e retorna o JWT |
-| POST | `/api/auth/login` | Autentica e retorna o JWT |
+| POST | `/api/auth/registrar` | Cria um usuário (Empreendedor ou Cliente) com status `PENDING_VERIFICATION` e envia e-mail de verificação. Não retorna JWT. |
+| POST | `/api/auth/login` | Autentica e retorna o JWT. Rejeita contas `PENDING_VERIFICATION`. |
+| GET | `/api/auth/verify-email?token=` | Ativa a conta a partir do token enviado por e-mail e retorna o JWT (login automático) |
+| POST | `/api/auth/resend-verification` | Reenvia o e-mail de verificação se a conta existir e estiver pendente (resposta sempre genérica) |
+| POST | `/api/auth/forgot-password` | Envia e-mail com link de redefinição de senha, válido por 2h (resposta sempre genérica) |
+| GET | `/api/auth/reset-password/validate?token=` | Retorna `{"valid": true/false}` sem alterar nada — usado pela tela de redefinição |
+| POST | `/api/auth/reset-password` | Redefine a senha (mínimo 8 caracteres) e invalida sessões (JWTs) emitidas antes da troca |
 
 ### Estabelecimento
 

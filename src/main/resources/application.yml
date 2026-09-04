@@ -13,3 +13,8 @@ studioflow:
   jwt:
     secret: ${JWT_SECRET:mBqQ9kX8vN2wZ7pR4tY6uC1sD3fG5hJ8kL0mN2pQ4rS6tU8vW0xY2zA4bC6dE8fG}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  resend:
+    api-key: ${RESEND_API_KEY:}
+  email:
+    from: ${EMAIL_FROM:Studio Schedule <naoresponda@studioschedule.com>}
+  frontend-url: ${FRONTEND_URL:https://studio-schedule-web.vercel.app}

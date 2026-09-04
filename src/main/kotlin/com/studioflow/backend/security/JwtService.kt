@@ -28,6 +28,8 @@ class JwtService(
 
 	fun extractSubject(token: String): String = parseClaims(token).subject
 
+	fun extractIssuedAt(token: String): Date = parseClaims(token).issuedAt
+
 	fun isTokenValid(token: String): Boolean =
 		try {
 			parseClaims(token)
