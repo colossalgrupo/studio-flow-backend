@@ -9,10 +9,10 @@ import org.springframework.web.client.RestClient
 @Service
 class EmailService(
 	@Value("\${studioflow.resend.api-key:}") private val apiKey: String,
-	@Value("\${studioflow.email.from}") private val from: String
+	@Value("\${studioflow.email.from}") private val from: String,
+	private val restClient: RestClient = RestClient.create("https://api.resend.com")
 ) {
 	private val log = LoggerFactory.getLogger(EmailService::class.java)
-	private val restClient = RestClient.create("https://api.resend.com")
 
 	fun sendVerificationEmail(to: String, nome: String, verificationUrl: String) {
 		send(

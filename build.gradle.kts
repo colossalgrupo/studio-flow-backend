@@ -5,6 +5,7 @@ plugins {
 	kotlin("plugin.spring") version "1.9.25"
 	id("org.springframework.boot") version "3.3.4"
 	id("io.spring.dependency-management") version "1.1.6"
+	jacoco
 }
 
 group = "com.studioflow"
@@ -36,6 +37,7 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("io.kotest:kotest-assertions-core:5.9.1")
+	testImplementation("io.mockk:mockk:1.13.13")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -45,6 +47,56 @@ kotlin {
 	}
 }
 
+jacoco {
+	toolVersion = "0.8.12"
+}
+
 tasks.withType<Test> {
 	useJUnitPlatform()
+	finalizedBy(tasks.jacocoTestReport)
+}
+
+// Cobertura de testes unitários é exigida apenas para o fluxo de autenticação
+// (auth/security/email) — DTOs, documentos Mongo e configuração de infraestrutura
+// (SecurityConfig, demais domínios de negócio) ficam fora do escopo desta verificação.
+val authCoverageIncludes = listOf(
+	"com/studioflow/backend/auth/AuthController.class",
+	"com/studioflow/backend/auth/AuthService.class",
+	"com/studioflow/backend/security/**",
+	"com/studioflow/backend/email/**",
+	"com/studioflow/backend/common/exception/**"
+)
+
+tasks.jacocoTestReport {
+	dependsOn(tasks.test)
+	reports {
+		xml.required.set(true)
+		html.required.set(true)
+	}
+	classDirectories.setFrom(
+		files(classDirectories.files.map {
+			fileTree(it) { include(authCoverageIncludes) }
+		})
+	)
+}
+
+tasks.jacocoTestCoverageVerification {
+	dependsOn(tasks.jacocoTestReport)
+	classDirectories.setFrom(tasks.jacocoTestReport.get().classDirectories)
+	violationRules {
+		rule {
+			limit {
+				counter = "LINE"
+				minimum = "0.95".toBigDecimal()
+			}
+			limit {
+				counter = "INSTRUCTION"
+				minimum = "0.95".toBigDecimal()
+			}
+		}
+	}
+}
+
+tasks.check {
+	dependsOn(tasks.jacocoTestCoverageVerification)
 }

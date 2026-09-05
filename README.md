@@ -93,6 +93,16 @@ A API sobe em `http://localhost:8080`. No startup, os planos Standard/Black/Diam
 ./gradlew build
 ```
 
+### 5. Testes unitários e cobertura
+
+```bash
+./gradlew test                          # roda os testes unitários (JUnit 5 + MockK + Kotest)
+./gradlew jacocoTestReport               # gera o relatório HTML em build/reports/jacoco/test/html/index.html
+./gradlew jacocoTestCoverageVerification # falha o build se a cobertura da autenticação cair abaixo de 95%
+```
+
+O fluxo de autenticação (`auth`, `security`, `email`, `common.exception`) tem cobertura mínima de **95%** (linha e instrução) garantida pelo Gradle — `./gradlew build`/`check` já roda `jacocoTestCoverageVerification` e falha caso a cobertura caia abaixo do limite. DTOs, documentos do Mongo e classes de configuração (`SecurityConfig` etc.) ficam fora dessa métrica por serem apenas dados/wiring, sem lógica a testar.
+
 ## Autenticação
 
 Todas as rotas protegidas esperam o header:
