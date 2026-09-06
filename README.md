@@ -1,6 +1,6 @@
-# Studio Flow — Backend
+# Studio Schedulle — Backend
 
-API REST do **Studio Flow**, um marketplace de agendamento com pagamento integrado (Pix e cartão) para profissionais de beleza e bem-estar — barbearias, personal trainers, estúdios de pilates, manicures, podólogas, massagistas, trancistas e autônomos do setor.
+API REST do **Studio Schedulle**, um marketplace de agendamento com pagamento integrado (Pix e cartão) para profissionais de beleza e bem-estar — barbearias, personal trainers, estúdios de pilates, manicures, podólogas, massagistas, trancistas e autônomos do setor.
 
 Dois perfis compartilham o mesmo fluxo de login:
 
@@ -85,8 +85,8 @@ docker-compose up -d
 | `CORS_ALLOWED_ORIGINS` | `https://studioschedulle.com.br,https://www.studioschedulle.com.br,https://app.studioschedulle.com.br,http://localhost:3000,http://localhost:5173` | Origens de navegador liberadas (lista separada por vírgula) |
 | `PORT` | `8080` | Porta HTTP da aplicação |
 | `RESEND_API_KEY` | *(vazio)* | Chave de API do [Resend](https://resend.com) usada para enviar e-mail de verificação de conta e de redefinição de senha. Sem essa variável, o envio é apenas logado (aviso) e o cadastro/reset de senha continuam funcionando normalmente — o usuário só não recebe o e-mail. |
-| `EMAIL_FROM` | `Studio Schedule <naoresponda@studioschedule.com>` | Remetente usado nos e-mails transacionais. **Precisa ser um endereço de um domínio verificado no Resend** — o valor padrão é um placeholder; troque pelo domínio real do produto assim que ele for verificado no painel do Resend. |
-| `FRONTEND_URL` | `https://studio-schedule-web.vercel.app` | Base usada para montar os links de verificação de e-mail (`/verify-email?token=...`) e redefinição de senha (`/reset-password?token=...`) enviados por e-mail, apontando para o `studio-flow-web`. |
+| `EMAIL_FROM` | `Studio Schedulle <naoresponda@studioschedulle.com.br>` | Remetente usado nos e-mails transacionais. **Precisa ser um endereço de um domínio verificado no Resend** — configure `studioschedulle.com.br` no painel do Resend antes de usar em produção. |
+| `FRONTEND_URL` | `https://app.studioschedulle.com.br` | Base usada para montar os links de verificação de e-mail (`/verify-email?token=...`) e redefinição de senha (`/reset-password?token=...`) enviados por e-mail, apontando para o `studio-flow-web` (web de gestão). |
 
 Veja também `.env.example` para uma lista pronta para copiar.
 

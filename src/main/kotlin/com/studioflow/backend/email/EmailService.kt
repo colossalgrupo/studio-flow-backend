@@ -17,11 +17,11 @@ class EmailService(
 	fun sendVerificationEmail(to: String, nome: String, verificationUrl: String) {
 		send(
 			to = to,
-			subject = "Confirme seu e-mail — Studio Schedule",
+			subject = "Confirme seu e-mail — Studio Schedulle",
 			html = layout(
 				titulo = "Confirme seu e-mail",
 				nome = nome,
-				corpo = "Falta pouco para começar a usar o Studio Schedule. Clique no botão abaixo para confirmar seu e-mail e ativar sua conta.",
+				corpo = "Falta pouco para começar a usar o Studio Schedulle. Clique no botão abaixo para confirmar seu e-mail e ativar sua conta.",
 				botaoTexto = "Confirmar e-mail",
 				botaoUrl = verificationUrl
 			)
@@ -31,11 +31,11 @@ class EmailService(
 	fun sendPasswordResetEmail(to: String, nome: String, resetUrl: String) {
 		send(
 			to = to,
-			subject = "Redefinição de senha — Studio Schedule",
+			subject = "Redefinição de senha — Studio Schedulle",
 			html = layout(
 				titulo = "Redefinir sua senha",
 				nome = nome,
-				corpo = "Recebemos um pedido para redefinir a senha da sua conta no Studio Schedule. Se foi você, clique no botão abaixo. O link expira em 2 horas. Se não foi você, ignore este e-mail.",
+				corpo = "Recebemos um pedido para redefinir a senha da sua conta no Studio Schedulle. Se foi você, clique no botão abaixo. O link expira em 2 horas. Se não foi você, ignore este e-mail.",
 				botaoTexto = "Redefinir senha",
 				botaoUrl = resetUrl
 			)
@@ -70,7 +70,7 @@ class EmailService(
 							<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;border-radius:12px;overflow:hidden;">
 								<tr>
 									<td style="background-color:#0F6B5C;padding:24px 32px;">
-										<span style="color:#FFFFFF;font-size:20px;font-weight:bold;">Studio Schedule</span>
+										<span style="color:#FFFFFF;font-size:20px;font-weight:bold;">Studio Schedulle</span>
 									</td>
 								</tr>
 								<tr>

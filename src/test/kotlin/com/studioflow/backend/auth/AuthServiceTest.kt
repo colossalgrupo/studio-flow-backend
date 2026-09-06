@@ -30,7 +30,7 @@ class AuthServiceTest {
 	private val passwordEncoder = mockk<PasswordEncoder>()
 	private val jwtService = mockk<JwtService>()
 	private val emailService = mockk<EmailService>(relaxed = true)
-	private val frontendUrl = "https://studio-schedule-web.vercel.app"
+	private val frontendUrl = "https://app.studioschedulle.com.br"
 
 	private lateinit var authService: AuthService
 
