@@ -3,6 +3,7 @@ package com.studioflow.backend.config
 import com.studioflow.backend.security.CustomUserDetailsService
 import com.studioflow.backend.security.JwtAuthenticationFilter
 import com.studioflow.backend.security.JwtService
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
@@ -22,7 +23,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableMethodSecurity
 class SecurityConfig(
 	private val jwtService: JwtService,
-	private val userDetailsService: CustomUserDetailsService
+	private val userDetailsService: CustomUserDetailsService,
+	@Value("\${studioflow.cors.allowed-origins}") private val corsAllowedOrigins: String
 ) {
 
 	@Bean
@@ -60,7 +62,7 @@ class SecurityConfig(
 
 	private fun corsConfigurationSource(): CorsConfigurationSource {
 		val configuration = CorsConfiguration().apply {
-			allowedOriginPatterns = listOf("*")
+			allowedOriginPatterns = corsAllowedOrigins.split(",").map { it.trim() }
 			allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
 			allowedHeaders = listOf("*")
 		}

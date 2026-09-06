@@ -43,6 +43,16 @@ Esta API é consumida por dois frontends:
 | Black | R$ 89,90 | 2,5% | 10 |
 | Diamond | R$ 189,90 | 1,5% | Ilimitado |
 
+## Domínios
+
+| Host | Uso |
+|---|---|
+| `studioschedulle.com.br` / `www.studioschedulle.com.br` | Site institucional — porta de entrada de novos clientes |
+| `api.studioschedulle.com.br` | Esta API (backend) |
+| `app.studioschedulle.com.br` | Web de gestão do empreendedor (`studio-flow-web`) |
+
+O app Android consome `api.studioschedulle.com.br` diretamente (CORS não se aplica a apps nativos). As origens de navegador liberadas em CORS são configuráveis via `CORS_ALLOWED_ORIGINS` (ver seção de variáveis de ambiente).
+
 ## Como rodar localmente
 
 ### Pré-requisitos
@@ -72,6 +82,7 @@ docker-compose up -d
 | `MONGODB_URI` | `mongodb://localhost:27017/studioflow` | String de conexão do MongoDB |
 | `JWT_SECRET` | chave de desenvolvimento embutida | Segredo usado para assinar os tokens JWT |
 | `JWT_EXPIRATION_MS` | `86400000` (24h) | Validade do token JWT |
+| `CORS_ALLOWED_ORIGINS` | `https://studioschedulle.com.br,https://www.studioschedulle.com.br,https://app.studioschedulle.com.br,http://localhost:3000,http://localhost:5173` | Origens de navegador liberadas (lista separada por vírgula) |
 | `PORT` | `8080` | Porta HTTP da aplicação |
 | `RESEND_API_KEY` | *(vazio)* | Chave de API do [Resend](https://resend.com) usada para enviar e-mail de verificação de conta e de redefinição de senha. Sem essa variável, o envio é apenas logado (aviso) e o cadastro/reset de senha continuam funcionando normalmente — o usuário só não recebe o e-mail. |
 | `EMAIL_FROM` | `Studio Schedule <naoresponda@studioschedule.com>` | Remetente usado nos e-mails transacionais. **Precisa ser um endereço de um domínio verificado no Resend** — o valor padrão é um placeholder; troque pelo domínio real do produto assim que ele for verificado no painel do Resend. |
