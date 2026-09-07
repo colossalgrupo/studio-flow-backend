@@ -216,69 +216,55 @@ A integração com o provedor de pagamento fica atrás da interface `PaymentGate
 
 ## Deploy
 
-### Por que Cloud Run
+### Por que AWS EC2
 
-O alvo de deploy é o **Google Cloud Run** rodando a imagem Docker do `Dockerfile` deste repositório, com `--min-instances=0`: sem tráfego, a aplicação escala a zero instâncias e não há cobrança de compute. Combinado com o MongoDB Atlas free tier (M0) para persistência, o custo de operação fica próximo de zero para um volume de MVP — você paga só pelas requisições/CPU realmente consumidas quando há uso.
+O alvo de deploy é uma instância **EC2 free tier** (`t3.micro`, `us-east-1`) rodando o jar diretamente via `systemd`, atrás do **Caddy** como reverse proxy com HTTPS automático (Let's Encrypt). Combinado com o MongoDB Atlas free tier (M0), o custo de operação fica próximo de zero para um volume de MVP — Elastic IP é gratuito enquanto associado a uma instância em execução.
 
-### Build da imagem
+O `Dockerfile` deste repositório continua disponível (multi-stage: `gradle:8.14.3-jdk21-alpine` compila o jar, `eclipse-temurin:21-jre-alpine` roda só o jar) caso o deploy migre para containers no futuro, mas **não é o caminho usado hoje** — rodar o jar direto via `systemd` evita compilar dentro da própria instância `t3.micro` (1 GB de RAM, insuficiente para um build Gradle+Kotlin) e evita o custo/complexidade de manter um registry de imagens.
 
-O `Dockerfile` é multi-stage: um estágio com `gradle:8.14.3-jdk21-alpine` compila o jar, e o estágio final usa `eclipse-temurin:21-jre-alpine`, copiando só o jar — imagem final enxuta, sem JDK nem Gradle. A aplicação escuta na porta definida por `PORT` (Cloud Run injeta essa variável automaticamente; localmente, sem `PORT` definido, cai para `8080`).
+### Provisionamento da instância
 
-```bash
-docker build -t studio-flow-backend .
-docker run -p 8080:8080 -e MONGODB_URI="..." -e JWT_SECRET="..." studio-flow-backend
-```
+Pré-requisitos: usuário IAM com permissões escopadas a EC2 (RunInstances, Security Groups, Key Pairs, Elastic IP — sem acesso a billing, IAM ou outros serviços).
 
-### Deploy manual via `gcloud`
+1. EC2 `t3.micro`, Ubuntu 22.04, região `us-east-1`.
+2. Security group: porta 22 (SSH) restrita ao IP do administrador; portas 80/443 públicas; nenhuma outra porta exposta.
+3. Elastic IP associado à instância (grátis enquanto a instância estiver rodando).
+4. DNS: registro **A** de `api.studioschedulle.com.br` apontando para o Elastic IP, criado no provedor de DNS do domínio.
 
-Pré-requisitos: [gcloud CLI](https://cloud.google.com/sdk/docs/install) autenticado (`gcloud auth login`) e um projeto GCP com as APIs Cloud Run e Artifact Registry/Cloud Build habilitadas.
-
-```bash
-gcloud run deploy studio-flow-backend \
-  --source . \
-  --region southamerica-east1 \
-  --platform managed \
-  --allow-unauthenticated \
-  --min-instances=0 \
-  --max-instances=2 \
-  --memory=512Mi
-```
-
-- `--min-instances=0`: escala a zero quando não há tráfego — nenhuma cobrança de compute em repouso. É o principal fator de custo mínimo.
-- `--max-instances=2`: teto razoável para um MVP, evita custo inesperado em caso de pico/loop de tráfego.
-- `--memory=512Mi`: suficiente para uma API Spring Boot com carga baixa; ajuste se necessário.
-- `--source .` builda a imagem a partir do `Dockerfile` via Cloud Build, sem precisar configurar um registry manualmente.
-
-### Variáveis de ambiente no Cloud Run
-
-Configure os segredos e a connection string do banco **no serviço do Cloud Run**, não no código nem no workflow de CI:
+### Instalação na instância
 
 ```bash
-gcloud run services update studio-flow-backend \
-  --region southamerica-east1 \
-  --update-env-vars MONGODB_URI="mongodb+srv://<usuario>:<senha>@<cluster>.mongodb.net/studioflow?retryWrites=true&w=majority" \
-  --update-env-vars JWT_SECRET="<segredo forte e aleatório>" \
-  --update-env-vars JWT_EXPIRATION_MS=86400000
+# Java 21
+sudo apt-get update && sudo apt-get install -y openjdk-21-jre-headless
+
+# Copiar o jar já compilado (build/libs/studio-flow-backend-0.0.1-SNAPSHOT.jar) para /opt/studioschedulle/app.jar
+
+# Variáveis de ambiente do serviço em /etc/studioschedulle.env (permissão 600, não versionado):
+MONGODB_URI=mongodb+srv://<usuario>:<senha>@<cluster>.mongodb.net/studioflow?retryWrites=true&w=majority
+JWT_SECRET=<segredo forte e aleatório>
+JWT_EXPIRATION_MS=86400000
+CORS_ALLOWED_ORIGINS=https://studioschedulle.com.br,https://www.studioschedulle.com.br,https://app.studioschedulle.com.br
+EMAIL_FROM=Studio Schedulle <naoresponda@studioschedulle.com.br>
+FRONTEND_URL=https://app.studioschedulle.com.br
+RESEND_API_KEY=<opcional>
+PORT=8080
 ```
 
-`PORT` **não** deve ser definida manualmente — o Cloud Run já a injeta.
+O serviço `systemd` (`studioschedulle-backend.service`) sobe o jar com `EnvironmentFile=/etc/studioschedulle.env` e reinicia automaticamente em caso de falha ou reboot da instância.
+
+### HTTPS via Caddy
+
+Caddy roda na porta 443, emite/renova o certificado Let's Encrypt automaticamente assim que o DNS aponta pro Elastic IP, e faz proxy reverso para `localhost:8080`:
+
+```
+api.studioschedulle.com.br {
+	reverse_proxy localhost:8080
+}
+```
 
 ### MongoDB
 
-O banco continua sendo o **MongoDB Atlas free tier (M0)**, externo ao Cloud Run e já gratuito — nenhuma configuração adicional de infraestrutura de banco é necessária para o deploy.
-
-### Deploy automático via GitHub Actions (opcional)
-
-Existe um workflow em `.github/workflows/deploy.yml` que builda a imagem e faz o deploy no Cloud Run a cada push na branch principal. Ele vem **desabilitado por padrão** (falha rápido na validação) até que os seguintes secrets sejam configurados em Settings → Secrets and variables → Actions do repositório:
-
-| Secret | Descrição |
-|---|---|
-| `GCP_PROJECT_ID` | ID do projeto no Google Cloud |
-| `GCP_WORKLOAD_IDP` | Provider da Workload Identity Federation (recomendado, evita chave estática) |
-| `GCP_SERVICE_ACCOUNT` | E-mail da service account usada no deploy |
-| `GCP_SA_KEY` | Alternativa à WIF: chave JSON da service account (menos recomendado) |
-
-Nenhuma credencial real é necessária até que você decida habilitar o workflow — o comportamento de deploy manual acima funciona independentemente disso.
+MongoDB Atlas free tier (M0). Como a EC2 tem IP fixo (o Elastic IP), o **Network Access do Atlas pode ser restrito a esse IP específico** — mais seguro do que liberar `0.0.0.0/0`.
 
 ## Fora do escopo desta etapa
 

@@ -20,8 +20,8 @@ USER spring:spring
 
 COPY --from=build /workspace/build/libs/*.jar app.jar
 
-# Cloud Run injects PORT and expects the container to listen on it
-# (server.port=${PORT:8080} in application.yml already honors this)
+# server.port=${PORT:8080} in application.yml honors the PORT env var when set,
+# falling back to 8080 otherwise.
 EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
