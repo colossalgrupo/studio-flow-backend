@@ -18,6 +18,8 @@ studioflow:
   email:
     from: ${EMAIL_FROM:Studio Schedulle <naoresponda@studioschedulle.com.br>}
   frontend-url: ${FRONTEND_URL:https://app.studioschedulle.com.br}
+  whatsapp:
+    verify-token: ${WHATSAPP_VERIFY_TOKEN:}
   cors:
     # Origens liberadas para chamadas via navegador (o app Android não é afetado por CORS).
     # Sobrescreva via env var CORS_ALLOWED_ORIGINS (lista separada por vírgula) em cada ambiente.
