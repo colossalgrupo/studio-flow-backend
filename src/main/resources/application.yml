@@ -3,7 +3,7 @@ spring:
     name: studio-flow-backend
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/studioflow}
+      uri: ${MONGODB_URI:mongodb://localhost:27017/studio-schedulle-db}
       auto-index-creation: true
 
 server:

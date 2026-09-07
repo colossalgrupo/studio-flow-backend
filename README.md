@@ -65,21 +65,21 @@ O app Android consome `api.studioschedulle.com.br` diretamente (CORS não se apl
 **Opção A — MongoDB Atlas (free tier, sem infra local):**
 
 ```bash
-export MONGODB_URI="mongodb+srv://<usuario>:<senha>@<cluster>.mongodb.net/studioflow?retryWrites=true&w=majority"
+export MONGODB_URI="mongodb+srv://<usuario>:<senha>@<cluster>.mongodb.net/studio-schedulle-db?retryWrites=true&w=majority"
 ```
 
 **Opção B — Mongo local via Docker:**
 
 ```bash
 docker-compose up -d
-# usa mongodb://localhost:27017/studioflow por padrão, sem precisar exportar MONGODB_URI
+# usa mongodb://localhost:27017/studio-schedulle-db por padrão, sem precisar exportar MONGODB_URI
 ```
 
 ### 2. Variáveis de ambiente (opcionais)
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `MONGODB_URI` | `mongodb://localhost:27017/studioflow` | String de conexão do MongoDB |
+| `MONGODB_URI` | `mongodb://localhost:27017/studio-schedulle-db` | String de conexão do MongoDB |
 | `JWT_SECRET` | chave de desenvolvimento embutida | Segredo usado para assinar os tokens JWT |
 | `JWT_EXPIRATION_MS` | `86400000` (24h) | Validade do token JWT |
 | `CORS_ALLOWED_ORIGINS` | `https://studioschedulle.com.br,https://www.studioschedulle.com.br,https://app.studioschedulle.com.br,http://localhost:3000,http://localhost:5173` | Origens de navegador liberadas (lista separada por vírgula) |
@@ -240,7 +240,7 @@ sudo apt-get update && sudo apt-get install -y openjdk-21-jre-headless
 # Copiar o jar já compilado (build/libs/studio-flow-backend-0.0.1-SNAPSHOT.jar) para /opt/studioschedulle/app.jar
 
 # Variáveis de ambiente do serviço em /etc/studioschedulle.env (permissão 600, não versionado):
-MONGODB_URI=mongodb+srv://<usuario>:<senha>@<cluster>.mongodb.net/studioflow?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<usuario>:<senha>@<cluster>.mongodb.net/studio-schedulle-db?retryWrites=true&w=majority
 JWT_SECRET=<segredo forte e aleatório>
 JWT_EXPIRATION_MS=86400000
 CORS_ALLOWED_ORIGINS=https://studioschedulle.com.br,https://www.studioschedulle.com.br,https://app.studioschedulle.com.br
