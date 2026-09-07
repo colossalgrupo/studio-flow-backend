@@ -155,6 +155,7 @@ Os e-mails de verificação de conta e redefinição de senha são enviados via 
 | POST | `/api/auth/forgot-password` | Envia e-mail com link de redefinição de senha, válido por 2h (resposta sempre genérica) |
 | GET | `/api/auth/reset-password/validate?token=` | Retorna `{"valid": true/false}` sem alterar nada — usado pela tela de redefinição |
 | POST | `/api/auth/reset-password` | Redefine a senha (mínimo 8 caracteres) e invalida sessões (JWTs) emitidas antes da troca |
+| GET | `/api/auth/me` | Retorna o usuário autenticado atual (id, nome, email, tipoPerfil), a partir do JWT |
 
 ### Estabelecimento
 
@@ -205,6 +206,16 @@ Os e-mails de verificação de conta e redefinição de senha são enviados via 
 | POST | `/api/agendamentos` | CLIENTE | Cria um agendamento; conflito de horário é rejeitado via índice único `(profissionalId, dataHora)` |
 | GET | `/api/agendamentos/me` | CLIENTE | Lista os agendamentos do cliente logado |
 | GET | `/api/agendamentos/profissional/{profissionalId}` | EMPREENDEDOR | Lista os agendamentos de um profissional do próprio estabelecimento |
+| GET | `/api/agendamentos/estabelecimento` | EMPREENDEDOR | Lista os agendamentos de todos os profissionais do próprio estabelecimento, já enriquecidos com nome do cliente, do profissional, do serviço, horário de fim e valor |
+| PATCH | `/api/agendamentos/{id}/status` | EMPREENDEDOR | Atualiza o status de um agendamento do próprio estabelecimento |
+
+### Bloqueio de agenda
+
+| Método | Rota | Perfil | Descrição |
+|---|---|---|---|
+| POST | `/api/bloqueios` | EMPREENDEDOR | Cria um bloqueio de horário na agenda de um profissional próprio |
+| GET | `/api/bloqueios` | EMPREENDEDOR | Lista os bloqueios de todos os profissionais do próprio estabelecimento |
+| DELETE | `/api/bloqueios/{id}` | EMPREENDEDOR | Remove um bloqueio |
 
 ### Pagamento
 
@@ -213,6 +224,26 @@ Os e-mails de verificação de conta e redefinição de senha são enviados via 
 | POST | `/api/pagamentos/confirmar` | CLIENTE | Confirma o pagamento (Pix/cartão) de um agendamento próprio e calcula o split entre plataforma, estabelecimento e profissional |
 
 A integração com o provedor de pagamento fica atrás da interface `PaymentGateway` (`com.studioflow.backend.pagamento.gateway`), hoje implementada por `MockPaymentGateway` (aprova tudo). Trocar por Asaas/Pagar.me/Mercado Pago não exige mudanças no domínio.
+
+### Financeiro
+
+| Método | Rota | Perfil | Descrição |
+|---|---|---|---|
+| GET | `/api/financeiro/transacoes` | EMPREENDEDOR | Lista as transações (pagamentos + split) do próprio estabelecimento |
+| GET | `/api/financeiro/repasses` | EMPREENDEDOR | Lista os repasses já realizados + um repasse pendente calculado por profissional, agregando splits ainda não repassados |
+| POST | `/api/financeiro/repasses/profissional/{profissionalId}/marcar-realizado` | EMPREENDEDOR | Marca o repasse pendente do profissional como realizado, persistindo o registro e alocando os splits envolvidos |
+
+### Dashboard
+
+| Método | Rota | Perfil | Descrição |
+|---|---|---|---|
+| GET | `/api/dashboard/resumo` | EMPREENDEDOR | Total de agendamentos, faturamento (e por dia), repasses pendentes e profissionais ativos do próprio estabelecimento |
+
+### Planos
+
+| Método | Rota | Perfil | Descrição |
+|---|---|---|---|
+| GET | `/api/planos` | público | Lista os planos disponíveis (Standard/Black/Diamond) |
 
 ## Deploy
 

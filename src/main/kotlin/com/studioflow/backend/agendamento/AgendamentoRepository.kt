@@ -5,4 +5,5 @@ import org.springframework.data.mongodb.repository.MongoRepository
 interface AgendamentoRepository : MongoRepository<Agendamento, String> {
 	fun findByClienteId(clienteId: String): List<Agendamento>
 	fun findByProfissionalId(profissionalId: String): List<Agendamento>
+	fun findByProfissionalIdIn(profissionalIds: List<String>): List<Agendamento>
 }

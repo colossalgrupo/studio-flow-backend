@@ -3,12 +3,15 @@ package com.studioflow.backend.auth
 import com.studioflow.backend.auth.dto.AuthResponse
 import com.studioflow.backend.auth.dto.ForgotPasswordRequest
 import com.studioflow.backend.auth.dto.LoginRequest
+import com.studioflow.backend.auth.dto.MeResponse
 import com.studioflow.backend.auth.dto.MessageResponse
 import com.studioflow.backend.auth.dto.RegisterRequest
 import com.studioflow.backend.auth.dto.RegisterResponse
 import com.studioflow.backend.auth.dto.ResendVerificationRequest
 import com.studioflow.backend.auth.dto.ResetPasswordRequest
 import com.studioflow.backend.auth.dto.TokenValidResponse
+import com.studioflow.backend.auth.dto.toMeResponse
+import com.studioflow.backend.security.SecurityUtils
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -32,6 +35,10 @@ class AuthController(
 	@PostMapping("/login")
 	fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<AuthResponse> =
 		ResponseEntity.ok(authService.login(request))
+
+	@GetMapping("/me")
+	fun me(): ResponseEntity<MeResponse> =
+		ResponseEntity.ok(SecurityUtils.currentUser().usuario.toMeResponse())
 
 	@GetMapping("/verify-email")
 	fun verifyEmail(@RequestParam token: String): ResponseEntity<AuthResponse> =

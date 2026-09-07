@@ -35,10 +35,13 @@ class ProfissionalService(
 				estabelecimentoId = estabelecimento.id!!,
 				nome = request.nome,
 				cpf = request.cpf,
+				email = request.email,
+				telefone = request.telefone,
 				especialidades = request.especialidades,
 				percentualComissao = request.percentualComissao,
 				periodicidadeRepasse = request.periodicidadeRepasse,
-				contaBancaria = request.contaBancaria.toContaBancaria()
+				contaBancaria = request.contaBancaria.toContaBancaria(),
+				ativo = request.ativo
 			)
 		)
 	}
@@ -56,10 +59,13 @@ class ProfissionalService(
 			profissional.copy(
 				nome = request.nome,
 				cpf = request.cpf,
+				email = request.email,
+				telefone = request.telefone,
 				especialidades = request.especialidades,
 				percentualComissao = request.percentualComissao,
 				periodicidadeRepasse = request.periodicidadeRepasse,
-				contaBancaria = request.contaBancaria.toContaBancaria()
+				contaBancaria = request.contaBancaria.toContaBancaria(),
+				ativo = request.ativo
 			)
 		)
 	}

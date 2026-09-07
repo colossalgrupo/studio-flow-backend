@@ -11,5 +11,6 @@ data class SplitPagamento(
 	@Indexed(unique = true) val pagamentoId: String,
 	val valorPlataforma: BigDecimal,
 	val valorEstabelecimento: BigDecimal,
-	val valorProfissional: BigDecimal
+	val valorProfissional: BigDecimal,
+	@Indexed val repasseId: String? = null
 )

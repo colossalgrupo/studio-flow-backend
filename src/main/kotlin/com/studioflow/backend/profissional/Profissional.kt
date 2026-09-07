@@ -11,6 +11,8 @@ data class Profissional(
 	@Indexed val estabelecimentoId: String,
 	val nome: String,
 	val cpf: String,
+	val email: String = "",
+	val telefone: String = "",
 	val especialidades: List<String>,
 	val percentualComissao: BigDecimal,
 	val periodicidadeRepasse: PeriodicidadeRepasse,

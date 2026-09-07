@@ -18,8 +18,11 @@ class ServicoService(
 			Servico(
 				estabelecimentoId = estabelecimento.id!!,
 				nome = request.nome,
+				categoria = request.categoria,
 				duracaoMin = request.duracaoMin,
-				precoBase = request.precoBase
+				precoBase = request.precoBase,
+				profissionaisIds = request.profissionaisIds,
+				ativo = request.ativo
 			)
 		)
 	}
@@ -37,7 +40,14 @@ class ServicoService(
 		val servico = buscarDoEstabelecimento(servicoId, estabelecimento.id!!)
 
 		return servicoRepository.save(
-			servico.copy(nome = request.nome, duracaoMin = request.duracaoMin, precoBase = request.precoBase)
+			servico.copy(
+				nome = request.nome,
+				categoria = request.categoria,
+				duracaoMin = request.duracaoMin,
+				precoBase = request.precoBase,
+				profissionaisIds = request.profissionaisIds,
+				ativo = request.ativo
+			)
 		)
 	}
 

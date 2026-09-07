@@ -9,10 +9,13 @@ data class ProfissionalResponse(
 	val estabelecimentoId: String,
 	val nome: String,
 	val cpf: String,
+	val email: String,
+	val telefone: String,
 	val especialidades: List<String>,
 	val percentualComissao: BigDecimal,
 	val periodicidadeRepasse: PeriodicidadeRepasse,
-	val contaBancaria: ContaBancariaDto
+	val contaBancaria: ContaBancariaDto,
+	val ativo: Boolean
 )
 
 fun Profissional.toResponse(): ProfissionalResponse = ProfissionalResponse(
@@ -20,8 +23,11 @@ fun Profissional.toResponse(): ProfissionalResponse = ProfissionalResponse(
 	estabelecimentoId = estabelecimentoId,
 	nome = nome,
 	cpf = cpf,
+	email = email,
+	telefone = telefone,
 	especialidades = especialidades,
 	percentualComissao = percentualComissao,
 	periodicidadeRepasse = periodicidadeRepasse,
-	contaBancaria = ContaBancariaDto.from(contaBancaria)
+	contaBancaria = ContaBancariaDto.from(contaBancaria),
+	ativo = ativo
 )

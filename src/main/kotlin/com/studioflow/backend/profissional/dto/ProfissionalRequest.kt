@@ -4,6 +4,7 @@ import com.studioflow.backend.profissional.PeriodicidadeRepasse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMax
 import jakarta.validation.constraints.DecimalMin
+import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.NotNull
@@ -15,6 +16,11 @@ data class ProfissionalRequest(
 
 	@field:NotBlank(message = "CPF é obrigatório")
 	val cpf: String,
+
+	@field:Email(message = "E-mail inválido")
+	val email: String = "",
+
+	val telefone: String = "",
 
 	@field:NotEmpty(message = "Informe ao menos uma especialidade")
 	val especialidades: List<String>,
@@ -29,5 +35,7 @@ data class ProfissionalRequest(
 
 	@field:Valid
 	@field:NotNull(message = "Conta bancária é obrigatória")
-	val contaBancaria: ContaBancariaDto
+	val contaBancaria: ContaBancariaDto,
+
+	val ativo: Boolean = true
 )

@@ -10,6 +10,9 @@ data class Servico(
 	@Id val id: String? = null,
 	@Indexed val estabelecimentoId: String,
 	val nome: String,
+	val categoria: String = "",
 	val duracaoMin: Int,
-	val precoBase: BigDecimal
+	val precoBase: BigDecimal,
+	val profissionaisIds: List<String> = emptyList(),
+	val ativo: Boolean = true
 )
