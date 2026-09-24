@@ -6,4 +6,5 @@ interface ProfissionalRepository : MongoRepository<Profissional, String> {
 	fun findByEstabelecimentoId(estabelecimentoId: String): List<Profissional>
 	fun countByEstabelecimentoId(estabelecimentoId: String): Long
 	fun findByEspecialidadesContaining(especialidade: String): List<Profissional>
+	fun findByAsaasAccountId(asaasAccountId: String): Profissional?
 }

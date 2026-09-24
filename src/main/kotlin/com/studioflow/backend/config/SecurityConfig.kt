@@ -42,6 +42,7 @@ class SecurityConfig(
 					.requestMatchers("/api/auth/**").permitAll()
 					.requestMatchers("/actuator/health").permitAll()
 					.requestMatchers("/api/whatsapp/webhook").permitAll()
+					.requestMatchers("/api/asaas/webhook").permitAll()
 					.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/planos").permitAll()
 					.requestMatchers(
 						org.springframework.http.HttpMethod.GET,

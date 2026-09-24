@@ -1,9 +1,12 @@
 package com.studioflow.backend.profissional
 
+import com.studioflow.backend.asaas.AsaasOnboardingService
+import com.studioflow.backend.asaas.StatusOnboardingAsaas
 import com.studioflow.backend.common.exception.BusinessException
 import com.studioflow.backend.estabelecimento.EstabelecimentoRepository
 import com.studioflow.backend.plano.PlanoRepository
 import com.studioflow.backend.profissional.dto.ProfissionalRequest
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 
@@ -11,8 +14,10 @@ import org.springframework.stereotype.Service
 class ProfissionalService(
 	private val profissionalRepository: ProfissionalRepository,
 	private val estabelecimentoRepository: EstabelecimentoRepository,
-	private val planoRepository: PlanoRepository
+	private val planoRepository: PlanoRepository,
+	private val asaasOnboardingService: AsaasOnboardingService
 ) {
+	private val log = LoggerFactory.getLogger(ProfissionalService::class.java)
 
 	fun criar(usuarioDonoId: String, request: ProfissionalRequest): Profissional {
 		val estabelecimento = estabelecimentoDoDono(usuarioDonoId)
@@ -30,6 +35,27 @@ class ProfissionalService(
 			}
 		}
 
+		// Endereço do estabelecimento é reaproveitado pra abrir a subconta do profissional —
+		// hoje não coletamos endereço próprio de cada profissional no cadastro.
+		val onboarding = try {
+			asaasOnboardingService.criarSubconta(
+				nome = request.nome,
+				email = request.email,
+				cpfCnpj = request.cpf,
+				dataNascimento = request.dataNascimento,
+				companyType = null,
+				faturamentoMensal = request.faturamentoMensal,
+				endereco = estabelecimento.endereco,
+				telefone = request.telefone
+			)
+		} catch (ex: Exception) {
+			log.error("Falha inesperada no onboarding Asaas do profissional: {}", ex.message, ex)
+			null
+		}
+		if (onboarding == null || onboarding.status != StatusOnboardingAsaas.CRIADA) {
+			log.warn("Profissional {} criado sem subconta Asaas (status: {}) — split de pagamento não vai funcionar até isso ser resolvido", request.nome, onboarding?.status)
+		}
+
 		return profissionalRepository.save(
 			Profissional(
 				estabelecimentoId = estabelecimento.id!!,
@@ -40,8 +66,13 @@ class ProfissionalService(
 				especialidades = request.especialidades,
 				percentualComissao = request.percentualComissao,
 				periodicidadeRepasse = request.periodicidadeRepasse,
-				contaBancaria = request.contaBancaria.toContaBancaria(),
-				ativo = request.ativo
+				contaBancaria = request.contaBancaria.toContaBancaria().copy(recebedorPspId = onboarding?.walletId),
+				ativo = request.ativo,
+				dataNascimento = request.dataNascimento,
+				faturamentoMensal = request.faturamentoMensal,
+				asaasAccountId = onboarding?.accountId,
+				asaasAccountApiKeyCriptografada = onboarding?.apiKeyCriptografada,
+				asaasAccountStatus = (onboarding?.status ?: StatusOnboardingAsaas.FALHA_API).name
 			)
 		)
 	}
@@ -55,6 +86,11 @@ class ProfissionalService(
 		val estabelecimento = estabelecimentoDoDono(usuarioDonoId)
 		val profissional = buscarDoEstabelecimento(profissionalId, estabelecimento.id!!)
 
+		// Preserva o walletId da subconta Asaas já criada — o formulário de edição não reenvia
+		// esse campo, e sobrescrever com null aqui quebraria o split desse profissional.
+		val contaBancariaAtualizada = request.contaBancaria.toContaBancaria()
+			.copy(recebedorPspId = request.contaBancaria.recebedorPspId ?: profissional.contaBancaria.recebedorPspId)
+
 		return profissionalRepository.save(
 			profissional.copy(
 				nome = request.nome,
@@ -64,8 +100,10 @@ class ProfissionalService(
 				especialidades = request.especialidades,
 				percentualComissao = request.percentualComissao,
 				periodicidadeRepasse = request.periodicidadeRepasse,
-				contaBancaria = request.contaBancaria.toContaBancaria(),
-				ativo = request.ativo
+				contaBancaria = contaBancariaAtualizada,
+				ativo = request.ativo,
+				dataNascimento = request.dataNascimento ?: profissional.dataNascimento,
+				faturamentoMensal = if (request.faturamentoMensal > java.math.BigDecimal.ZERO) request.faturamentoMensal else profissional.faturamentoMensal
 			)
 		)
 	}

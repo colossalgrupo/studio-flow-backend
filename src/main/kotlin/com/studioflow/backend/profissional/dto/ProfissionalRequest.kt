@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.NotNull
 import java.math.BigDecimal
+import java.time.LocalDate
 
 data class ProfissionalRequest(
 	@field:NotBlank(message = "Nome é obrigatório")
@@ -37,5 +38,13 @@ data class ProfissionalRequest(
 	@field:NotNull(message = "Conta bancária é obrigatória")
 	val contaBancaria: ContaBancariaDto,
 
-	val ativo: Boolean = true
+	val ativo: Boolean = true,
+
+	/** Usados pra abrir a subconta Asaas do profissional (recebe split como pessoa física). */
+	@field:NotNull(message = "Data de nascimento é obrigatória")
+	val dataNascimento: LocalDate? = null,
+
+	@field:NotNull(message = "Faturamento/renda mensal é obrigatório")
+	@field:DecimalMin(value = "0.01", message = "Faturamento mensal deve ser maior que zero")
+	val faturamentoMensal: BigDecimal = BigDecimal.ZERO
 )

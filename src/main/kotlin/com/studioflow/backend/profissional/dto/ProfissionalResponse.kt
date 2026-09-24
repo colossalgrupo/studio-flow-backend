@@ -3,6 +3,7 @@ package com.studioflow.backend.profissional.dto
 import com.studioflow.backend.profissional.PeriodicidadeRepasse
 import com.studioflow.backend.profissional.Profissional
 import java.math.BigDecimal
+import java.time.LocalDate
 
 data class ProfissionalResponse(
 	val id: String,
@@ -15,7 +16,11 @@ data class ProfissionalResponse(
 	val percentualComissao: BigDecimal,
 	val periodicidadeRepasse: PeriodicidadeRepasse,
 	val contaBancaria: ContaBancariaDto,
-	val ativo: Boolean
+	val ativo: Boolean,
+	val dataNascimento: LocalDate?,
+	val faturamentoMensal: BigDecimal,
+	// Nunca expor a apiKey da subconta aqui — só o status, que é seguro de mostrar.
+	val asaasAccountStatus: String?
 )
 
 fun Profissional.toResponse(): ProfissionalResponse = ProfissionalResponse(
@@ -29,5 +34,8 @@ fun Profissional.toResponse(): ProfissionalResponse = ProfissionalResponse(
 	percentualComissao = percentualComissao,
 	periodicidadeRepasse = periodicidadeRepasse,
 	contaBancaria = ContaBancariaDto.from(contaBancaria),
-	ativo = ativo
+	ativo = ativo,
+	dataNascimento = dataNascimento,
+	faturamentoMensal = faturamentoMensal,
+	asaasAccountStatus = asaasAccountStatus
 )
