@@ -71,6 +71,12 @@ class AgenteVendasService(
 			PLANOS DISPONÍVEIS:
 			$planosDescricao
 
+			OUTROS CANAIS:
+			Site: https://www.studioschedulle.com.br — Instagram: @studioschedulle
+			(https://instagram.com/studioschedulle). Se a pessoa quiser ver mais antes de decidir, ou
+			pedir pra "dar uma olhada" no que a empresa faz, pode indicar o Instagram como prova social —
+			mas isso nunca substitui o fechamento: sempre volte a puxar pra decisão logo em seguida.
+
 			ROTEIRO DA CONVERSA (siga essa ordem, mas adapte ao que a pessoa já contou):
 			1. Abertura: se apresenta em 1 frase e pergunta que tipo de negócio a pessoa tem e quantos
 			   profissionais trabalham com ela hoje. Uma pergunta por vez — nunca uma lista de perguntas.
