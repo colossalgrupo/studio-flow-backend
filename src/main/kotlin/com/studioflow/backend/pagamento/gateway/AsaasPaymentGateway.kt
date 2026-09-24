@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 
 /**
@@ -59,8 +61,8 @@ class AsaasPaymentGateway(
 				dueDate = LocalDate.now(),
 				externalReference = request.referenciaExterna,
 				split = listOf(
-					AsaasSplitItem(walletId = request.walletIdEstabelecimento, fixedValue = request.valorEstabelecimento),
-					AsaasSplitItem(walletId = request.walletIdProfissional, fixedValue = request.valorProfissional)
+					AsaasSplitItem(walletId = request.walletIdEstabelecimento, percentualValue = percentual(request.valorEstabelecimento, request.valor)),
+					AsaasSplitItem(walletId = request.walletIdProfissional, percentualValue = percentual(request.valorProfissional, request.valor))
 				)
 			)
 		) ?: throw BusinessException(HttpStatus.BAD_GATEWAY, "Não foi possível criar a cobrança na Asaas.")
@@ -82,4 +84,8 @@ class AsaasPaymentGateway(
 			qrCodeImagemBase64 = qrCode?.encodedImage
 		)
 	}
+
+	private fun percentual(parte: BigDecimal, total: BigDecimal): BigDecimal =
+		if (total.signum() == 0) BigDecimal.ZERO
+		else (parte * BigDecimal(100)).divide(total, 4, RoundingMode.HALF_UP)
 }
