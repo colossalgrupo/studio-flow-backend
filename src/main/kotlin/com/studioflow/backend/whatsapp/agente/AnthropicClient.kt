@@ -38,7 +38,10 @@ class AnthropicClient(
 				.body(
 					mapOf(
 						"model" to model,
-						"max_tokens" to 500,
+						// baixo o suficiente pra não deixar o modelo "esticar" a resposta (mensagens
+						// curtas de WhatsApp custam bem menos, já que o token de saída é 5x mais caro
+						// que o de entrada), mas ainda cobre 2-3 frases + link
+						"max_tokens" to 220,
 						// temperatura baixa: respostas mais consistentes e decisivas,
 						// menos variação/hesitação entre uma chamada e outra
 						"temperature" to 0.4,
