@@ -20,6 +20,11 @@ studioflow:
   frontend-url: ${FRONTEND_URL:https://app.studioschedulle.com.br}
   whatsapp:
     verify-token: ${WHATSAPP_VERIFY_TOKEN:}
+    access-token: ${WHATSAPP_ACCESS_TOKEN:}
+    phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
   cors:
     # Origens liberadas para chamadas via navegador (o app Android não é afetado por CORS).
     # Sobrescreva via env var CORS_ALLOWED_ORIGINS (lista separada por vírgula) em cada ambiente.
