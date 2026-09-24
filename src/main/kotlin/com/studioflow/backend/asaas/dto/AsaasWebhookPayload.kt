@@ -9,11 +9,18 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class AsaasWebhookPayload(
 	val event: String? = null,
-	val account: AsaasWebhookAccount? = null
+	val account: AsaasWebhookAccount? = null,
+	val payment: AsaasWebhookPayment? = null
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class AsaasWebhookAccount(
+	val id: String? = null,
+	val status: String? = null
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class AsaasWebhookPayment(
 	val id: String? = null,
 	val status: String? = null
 )

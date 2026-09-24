@@ -12,5 +12,8 @@ data class Pagamento(
 	val valorTotal: BigDecimal,
 	val metodo: MetodoPagamento,
 	val statusPsp: String,
-	val status: StatusPagamento
+	val status: StatusPagamento,
+	// Id da cobrança na Asaas — usado pra correlacionar o webhook de confirmação
+	// de pagamento Pix (que chega depois, quando o cliente efetivamente paga).
+	@Indexed val asaasPaymentId: String? = null
 )

@@ -2,6 +2,9 @@ package com.studioflow.backend.financeiro
 
 import com.studioflow.backend.agendamento.Agendamento
 import com.studioflow.backend.agendamento.AgendamentoRepository
+import com.studioflow.backend.asaas.AsaasClient
+import com.studioflow.backend.asaas.dto.AsaasTransferenciaRequest
+import com.studioflow.backend.common.crypto.CryptoService
 import com.studioflow.backend.common.exception.BusinessException
 import com.studioflow.backend.estabelecimento.Estabelecimento
 import com.studioflow.backend.estabelecimento.EstabelecimentoRepository
@@ -16,6 +19,8 @@ import com.studioflow.backend.profissional.Profissional
 import com.studioflow.backend.profissional.ProfissionalRepository
 import com.studioflow.backend.servico.ServicoRepository
 import com.studioflow.backend.usuario.UsuarioRepository
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import java.time.LocalDate
@@ -29,8 +34,12 @@ class FinanceiroService(
 	private val splitPagamentoRepository: SplitPagamentoRepository,
 	private val servicoRepository: ServicoRepository,
 	private val usuarioRepository: UsuarioRepository,
-	private val repasseRepository: RepasseRepository
+	private val repasseRepository: RepasseRepository,
+	private val asaasClient: AsaasClient,
+	private val cryptoService: CryptoService,
+	@Value("\${studioflow.pagamento.gateway-ativo:false}") private val gatewayAtivo: Boolean
 ) {
+	private val log = LoggerFactory.getLogger(FinanceiroService::class.java)
 
 	fun listarTransacoes(usuarioDonoId: String): List<TransacaoResponse> {
 		val (estabelecimento, profissionais) = estabelecimentoEProfissionais(usuarioDonoId)
@@ -132,6 +141,10 @@ class FinanceiroService(
 		val valorLiquido = splitsNaoAlocados.sumOf { it.valorProfissional }
 		val valorComissao = splitsNaoAlocados.sumOf { it.valorPlataforma + it.valorEstabelecimento }
 
+		if (gatewayAtivo) {
+			dispararTransferenciaReal(profissional, valorLiquido)
+		}
+
 		val repasse = repasseRepository.save(
 			Repasse(
 				profissionalId = profissionalId,
@@ -149,6 +162,46 @@ class FinanceiroService(
 		splitsNaoAlocados.forEach { split -> splitPagamentoRepository.save(split.copy(repasseId = repasse.id)) }
 
 		return repasse.toResponse(profissional.nome)
+	}
+
+	/**
+	 * Saque de verdade: usa a apiKey da PRÓPRIA subconta do profissional (guardada
+	 * criptografada na criação — ver AsaasOnboardingService) pra transferir da subconta
+	 * pra chave Pix cadastrada. Se falhar, não marca o repasse como realizado.
+	 */
+	private fun dispararTransferenciaReal(profissional: Profissional, valor: java.math.BigDecimal) {
+		val apiKeyCriptografada = profissional.asaasAccountApiKeyCriptografada
+			?: throw BusinessException(
+				HttpStatus.CONFLICT,
+				"Profissional sem subconta Asaas com apiKey salva — não é possível transferir automaticamente."
+			)
+		if (!cryptoService.configurado()) {
+			throw BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "CRYPTO_SECRET_KEY não configurada")
+		}
+		val apiKey = cryptoService.decrypt(apiKeyCriptografada)
+		val chavePix = profissional.contaBancaria.chavePix
+
+		val resultado = asaasClient.criarTransferencia(
+			apiKey,
+			AsaasTransferenciaRequest(
+				value = valor,
+				pixAddressKey = chavePix,
+				pixAddressKeyType = tipoChavePix(chavePix)
+			)
+		) ?: throw BusinessException(HttpStatus.BAD_GATEWAY, "Não foi possível transferir o repasse via Asaas.")
+
+		log.info("Transferência de repasse disparada pra profissional {} (Asaas transfer {})", profissional.id, resultado.id)
+	}
+
+	private fun tipoChavePix(chave: String): String {
+		val digitos = chave.filter { it.isDigit() }
+		return when {
+			chave.contains("@") -> "EMAIL"
+			digitos.length == 11 && digitos == chave.replace(Regex("[.\\-]"), "") -> "CPF"
+			digitos.length == 14 && digitos == chave.replace(Regex("[./\\-]"), "") -> "CNPJ"
+			chave.matches(Regex("^\\+?\\d{10,13}$")) -> "PHONE"
+			else -> "EVP"
+		}
 	}
 
 	private fun splitsPendentesDoEstabelecimento(

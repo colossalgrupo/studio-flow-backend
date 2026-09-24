@@ -12,6 +12,8 @@ import com.studioflow.backend.pagamento.gateway.PaymentGatewayRequest
 import com.studioflow.backend.plano.PlanoRepository
 import com.studioflow.backend.profissional.ProfissionalRepository
 import com.studioflow.backend.servico.ServicoRepository
+import com.studioflow.backend.usuario.UsuarioRepository
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -26,8 +28,10 @@ class PagamentoService(
 	private val profissionalRepository: ProfissionalRepository,
 	private val estabelecimentoRepository: EstabelecimentoRepository,
 	private val planoRepository: PlanoRepository,
+	private val usuarioRepository: UsuarioRepository,
 	private val paymentGateway: PaymentGateway
 ) {
+	private val log = LoggerFactory.getLogger(PagamentoService::class.java)
 
 	fun confirmarPagamento(clienteId: String, request: ConfirmarPagamentoRequest): PagamentoResponse {
 		val agendamento = agendamentoService.buscarPorId(request.agendamentoId)
@@ -46,16 +50,38 @@ class PagamentoService(
 			.orElseThrow { BusinessException(HttpStatus.NOT_FOUND, "Estabelecimento não encontrado") }
 		val plano = planoRepository.findById(estabelecimento.planoId)
 			.orElseThrow { BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "Plano do estabelecimento não encontrado") }
+		val cliente = usuarioRepository.findById(clienteId)
+			.orElseThrow { BusinessException(HttpStatus.NOT_FOUND, "Cliente não encontrado") }
 
 		val valorTotal = servico.precoBase
+		// Calculado ANTES de chamar o gateway — no gateway real, o split precisa ir junto
+		// no corpo da cobrança (é a Asaas que divide o dinheiro no momento do pagamento,
+		// não algo que a gente faz depois por conta própria).
+		val valorPlataforma = arredondar(valorTotal * plano.taxaPlataformaPct / BigDecimal(100))
+		val valorProfissional = arredondar(valorTotal * profissional.percentualComissao / BigDecimal(100))
+		val valorEstabelecimento = arredondar(valorTotal - valorPlataforma - valorProfissional)
 
 		val resultado = paymentGateway.processarPagamento(
 			PaymentGatewayRequest(
 				valor = valorTotal,
 				metodo = request.metodo,
-				referenciaExterna = agendamento.id
+				referenciaExterna = agendamento.id,
+				clienteId = clienteId,
+				clienteNome = cliente.nome,
+				clienteEmail = cliente.email,
+				clienteCpf = request.cpf,
+				walletIdEstabelecimento = estabelecimento.asaasWalletId,
+				walletIdProfissional = profissional.contaBancaria.recebedorPspId,
+				valorEstabelecimento = valorEstabelecimento,
+				valorProfissional = valorProfissional
 			)
 		)
+
+		val status = when {
+			resultado.aprovado -> StatusPagamento.APROVADO
+			resultado.pendente -> StatusPagamento.PENDENTE
+			else -> StatusPagamento.RECUSADO
+		}
 
 		val pagamento = pagamentoRepository.save(
 			Pagamento(
@@ -63,25 +89,68 @@ class PagamentoService(
 				valorTotal = valorTotal,
 				metodo = request.metodo,
 				statusPsp = resultado.statusPsp,
-				status = if (resultado.aprovado) StatusPagamento.APROVADO else StatusPagamento.RECUSADO
+				status = status,
+				asaasPaymentId = if (resultado.pendente) resultado.transacaoId else null
 			)
 		)
 
+		if (resultado.pendente) {
+			// Ainda não houve pagamento de fato — o split só é persistido quando o
+			// webhook de confirmação chegar (ver confirmarPagamentoPix).
+			return pagamento.toResponse(null, resultado.qrCodePayload, resultado.qrCodeImagemBase64)
+		}
 		if (!resultado.aprovado) {
 			return pagamento.toResponse(null)
 		}
 
-		val split = calcularSplit(
-			pagamentoId = pagamento.id!!,
-			valorTotal = valorTotal,
-			taxaPlataformaPct = plano.taxaPlataformaPct,
-			percentualComissaoProfissional = profissional.percentualComissao
+		val splitSalvo = splitPagamentoRepository.save(
+			SplitPagamento(
+				pagamentoId = pagamento.id!!,
+				valorPlataforma = valorPlataforma,
+				valorEstabelecimento = valorEstabelecimento,
+				valorProfissional = valorProfissional
+			)
 		)
-		val splitSalvo = splitPagamentoRepository.save(split)
 
 		agendamentoService.atualizarStatus(agendamento.id, StatusAgendamento.CONFIRMADO)
 
 		return pagamento.toResponse(splitSalvo.toResponse())
+	}
+
+	/**
+	 * Chamado pelo webhook da Asaas quando um Pix pendente é efetivamente pago
+	 * (PAYMENT_CONFIRMED/PAYMENT_RECEIVED). Idempotente — a Asaas pode reenviar o
+	 * mesmo evento (entrega "pelo menos uma vez").
+	 */
+	fun confirmarPagamentoPix(asaasPaymentId: String) {
+		val pagamento = pagamentoRepository.findByAsaasPaymentId(asaasPaymentId) ?: run {
+			log.warn("Webhook de pagamento Asaas recebido pra {} sem Pagamento correspondente", asaasPaymentId)
+			return
+		}
+		if (pagamento.status != StatusPagamento.PENDENTE) {
+			log.info("Pagamento {} já estava em status {} — ignorando webhook duplicado", pagamento.id, pagamento.status)
+			return
+		}
+
+		val agendamento = agendamentoService.buscarPorId(pagamento.agendamentoId)
+		val profissional = profissionalRepository.findById(agendamento.profissionalId)
+			.orElseThrow { BusinessException(HttpStatus.NOT_FOUND, "Profissional não encontrado") }
+		val estabelecimento = estabelecimentoRepository.findById(profissional.estabelecimentoId)
+			.orElseThrow { BusinessException(HttpStatus.NOT_FOUND, "Estabelecimento não encontrado") }
+		val plano = planoRepository.findById(estabelecimento.planoId)
+			.orElseThrow { BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "Plano do estabelecimento não encontrado") }
+
+		val split = calcularSplit(
+			pagamentoId = pagamento.id!!,
+			valorTotal = pagamento.valorTotal,
+			taxaPlataformaPct = plano.taxaPlataformaPct,
+			percentualComissaoProfissional = profissional.percentualComissao
+		)
+		splitPagamentoRepository.save(split)
+
+		pagamentoRepository.save(pagamento.copy(status = StatusPagamento.APROVADO, statusPsp = "CONFIRMED"))
+		agendamentoService.atualizarStatus(agendamento.id!!, StatusAgendamento.CONFIRMADO)
+		log.info("Pagamento {} confirmado via webhook Asaas (Pix pago)", pagamento.id)
 	}
 
 	private fun calcularSplit(

@@ -3,6 +3,7 @@ package com.studioflow.backend.asaas
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.studioflow.backend.asaas.dto.AsaasWebhookPayload
 import com.studioflow.backend.estabelecimento.EstabelecimentoRepository
+import com.studioflow.backend.pagamento.PagamentoService
 import com.studioflow.backend.profissional.ProfissionalRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController
 class AsaasWebhookController(
 	private val estabelecimentoRepository: EstabelecimentoRepository,
 	private val profissionalRepository: ProfissionalRepository,
+	private val pagamentoService: PagamentoService,
 	private val objectMapper: ObjectMapper,
 	@Value("\${studioflow.asaas.webhook-token:}") private val webhookToken: String
 ) {
@@ -51,10 +53,17 @@ class AsaasWebhookController(
 
 	private fun processar(payload: String) {
 		val evento = objectMapper.readValue(payload, AsaasWebhookPayload::class.java)
+
+		val paymentId = evento.payment?.id
+		if (paymentId != null && (evento.event == "PAYMENT_CONFIRMED" || evento.event == "PAYMENT_RECEIVED")) {
+			pagamentoService.confirmarPagamentoPix(paymentId)
+			return
+		}
+
 		val accountId = evento.account?.id
 		val status = evento.account?.status
 		if (accountId == null || status == null) {
-			log.debug("Webhook Asaas ignorado (sem account.id/status): {}", evento.event)
+			log.debug("Webhook Asaas ignorado (sem account.id/status nem payment reconhecido): {}", evento.event)
 			return
 		}
 

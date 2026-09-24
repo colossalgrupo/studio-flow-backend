@@ -17,5 +17,8 @@ data class Usuario(
 	val emailVerifiedAt: Instant? = null,
 	@Indexed val passwordResetToken: String? = null,
 	val passwordResetExpiresAt: Instant? = null,
-	val passwordChangedAt: Instant? = null
+	val passwordChangedAt: Instant? = null,
+	// Cliente Asaas do usuário quando ele paga algo (cobrança do agendamento) — criado
+	// sob demanda na primeira cobrança, não no cadastro (ver AsaasPaymentGateway).
+	val asaasCustomerId: String? = null
 )
