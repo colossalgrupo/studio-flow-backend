@@ -13,6 +13,7 @@ import com.studioflow.backend.usuario.UsuarioRepository
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import java.time.LocalDate
 
 @Service
 class AgendamentoService(
@@ -59,7 +60,25 @@ class AgendamentoService(
 		return agendamentoRepository.findByProfissionalId(profissionalId)
 	}
 
-	fun listarPorEstabelecimentoDoDono(usuarioDonoId: String): List<AgendamentoDetalhadoResponse> {
+	fun listarPorEstabelecimentoDoDono(usuarioDonoId: String): List<AgendamentoDetalhadoResponse> =
+		detalhesDoEstabelecimento(usuarioDonoId)
+
+	/**
+	 * Histórico de atendimentos concluídos do estabelecimento, mais recentes primeiro
+	 * (o que naturalmente traz o mês atual no topo). [dataInicio]/[dataFim] filtram por
+	 * período específico quando informados.
+	 */
+	fun listarHistoricoDoDono(usuarioDonoId: String, dataInicio: LocalDate?, dataFim: LocalDate?): List<AgendamentoDetalhadoResponse> {
+		return detalhesDoEstabelecimento(usuarioDonoId)
+			.filter { it.status == StatusAgendamento.CONCLUIDO }
+			.filter { detalhe ->
+				val data = detalhe.inicio.toLocalDate()
+				(dataInicio == null || !data.isBefore(dataInicio)) && (dataFim == null || !data.isAfter(dataFim))
+			}
+			.sortedByDescending { it.inicio }
+	}
+
+	private fun detalhesDoEstabelecimento(usuarioDonoId: String): List<AgendamentoDetalhadoResponse> {
 		val estabelecimento = estabelecimentoDoDono(usuarioDonoId)
 		val profissionais = profissionalRepository.findByEstabelecimentoId(estabelecimento.id!!)
 		val profissionaisPorId = profissionais.associateBy { it.id }

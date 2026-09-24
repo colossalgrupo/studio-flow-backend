@@ -7,6 +7,7 @@ import com.studioflow.backend.agendamento.dto.AtualizarStatusAgendamentoRequest
 import com.studioflow.backend.agendamento.dto.toResponse
 import com.studioflow.backend.security.SecurityUtils
 import jakarta.validation.Valid
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
 
 @RestController
 @RequestMapping("/api/agendamentos")
@@ -48,6 +51,14 @@ class AgendamentoController(
 	@PreAuthorize("hasRole('EMPREENDEDOR')")
 	fun listarPorEstabelecimento(): ResponseEntity<List<AgendamentoDetalhadoResponse>> =
 		ResponseEntity.ok(agendamentoService.listarPorEstabelecimentoDoDono(SecurityUtils.currentUserId()))
+
+	@GetMapping("/estabelecimento/historico")
+	@PreAuthorize("hasRole('EMPREENDEDOR')")
+	fun listarHistorico(
+		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) dataInicio: LocalDate?,
+		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) dataFim: LocalDate?
+	): ResponseEntity<List<AgendamentoDetalhadoResponse>> =
+		ResponseEntity.ok(agendamentoService.listarHistoricoDoDono(SecurityUtils.currentUserId(), dataInicio, dataFim))
 
 	@PatchMapping("/{id}/status")
 	@PreAuthorize("hasRole('EMPREENDEDOR')")
