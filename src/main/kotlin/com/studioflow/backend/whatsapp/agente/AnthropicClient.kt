@@ -39,6 +39,9 @@ class AnthropicClient(
 					mapOf(
 						"model" to model,
 						"max_tokens" to 500,
+						// temperatura baixa: respostas mais consistentes e decisivas,
+						// menos variação/hesitação entre uma chamada e outra
+						"temperature" to 0.4,
 						"system" to systemPrompt,
 						"messages" to mensagens
 					)
