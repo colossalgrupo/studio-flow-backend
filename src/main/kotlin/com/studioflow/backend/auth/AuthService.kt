@@ -43,7 +43,8 @@ class AuthService(
 				senhaHash = passwordEncoder.encode(request.senha),
 				tipoPerfil = request.tipoPerfil,
 				status = StatusUsuario.PENDING_VERIFICATION,
-				emailVerificationToken = verificationToken
+				emailVerificationToken = verificationToken,
+				planoPreferido = request.planoPreferido
 			)
 		)
 
@@ -150,7 +151,8 @@ class AuthService(
 			token = token,
 			tipoPerfil = usuario.tipoPerfil,
 			nome = usuario.nome,
-			email = usuario.email
+			email = usuario.email,
+			planoPreferido = usuario.planoPreferido
 		)
 	}
 }

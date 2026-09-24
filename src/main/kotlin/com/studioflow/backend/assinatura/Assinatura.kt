@@ -11,5 +11,8 @@ data class Assinatura(
 	val planoId: String,
 	val status: StatusAssinatura,
 	/** Ciclo de cobrança atual, formato "yyyy-MM" */
-	val cicloAtual: String
+	val cicloAtual: String,
+	// Preenchido só quando o gateway de pagamento real está ativo — assinatura
+	// recorrente criada na Asaas pra cobrar a mensalidade do plano.
+	val asaasSubscriptionId: String? = null
 )

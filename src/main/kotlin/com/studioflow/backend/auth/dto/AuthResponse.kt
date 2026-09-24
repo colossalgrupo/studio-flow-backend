@@ -6,5 +6,6 @@ data class AuthResponse(
 	val token: String,
 	val tipoPerfil: TipoPerfil,
 	val nome: String,
-	val email: String
+	val email: String,
+	val planoPreferido: String? = null
 )

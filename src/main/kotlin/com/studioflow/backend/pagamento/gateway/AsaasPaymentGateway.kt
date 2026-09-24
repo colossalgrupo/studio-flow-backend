@@ -1,7 +1,7 @@
 package com.studioflow.backend.pagamento.gateway
 
 import com.studioflow.backend.asaas.AsaasClient
-import com.studioflow.backend.asaas.dto.AsaasClienteRequest
+import com.studioflow.backend.asaas.AsaasClienteService
 import com.studioflow.backend.asaas.dto.AsaasCobrancaRequest
 import com.studioflow.backend.asaas.dto.AsaasSplitItem
 import com.studioflow.backend.common.exception.BusinessException
@@ -27,6 +27,7 @@ import java.time.LocalDate
 @ConditionalOnProperty(name = ["studioflow.pagamento.gateway-ativo"], havingValue = "true")
 class AsaasPaymentGateway(
 	private val asaasClient: AsaasClient,
+	private val asaasClienteService: AsaasClienteService,
 	private val usuarioRepository: UsuarioRepository
 ) : PaymentGateway {
 	private val log = LoggerFactory.getLogger(AsaasPaymentGateway::class.java)
@@ -45,7 +46,9 @@ class AsaasPaymentGateway(
 			throw BusinessException(HttpStatus.BAD_REQUEST, "CPF é obrigatório pra pagar via Pix.")
 		}
 
-		val customerId = obterOuCriarClienteAsaas(request)
+		val usuario = usuarioRepository.findById(request.clienteId).orElse(null)
+			?: throw BusinessException(HttpStatus.NOT_FOUND, "Usuário pagador não encontrado")
+		val customerId = asaasClienteService.garantirCliente(usuario, request.clienteCpf)
 			?: throw BusinessException(HttpStatus.BAD_GATEWAY, "Não foi possível registrar o cliente na Asaas.")
 
 		val cobranca = asaasClient.criarCobranca(
@@ -78,24 +81,5 @@ class AsaasPaymentGateway(
 			qrCodePayload = qrCode?.payload,
 			qrCodeImagemBase64 = qrCode?.encodedImage
 		)
-	}
-
-	private fun obterOuCriarClienteAsaas(request: PaymentGatewayRequest): String? {
-		val usuario = usuarioRepository.findById(request.clienteId).orElse(null)
-			?: throw BusinessException(HttpStatus.NOT_FOUND, "Usuário pagador não encontrado")
-
-		usuario.asaasCustomerId?.let { return it }
-
-		val resposta = asaasClient.criarCliente(
-			AsaasClienteRequest(
-				name = request.clienteNome,
-				email = request.clienteEmail,
-				cpfCnpj = request.clienteCpf!!.filter { it.isDigit() }
-			)
-		) ?: return null
-
-		val customerId = resposta.id ?: return null
-		usuarioRepository.save(usuario.copy(asaasCustomerId = customerId))
-		return customerId
 	}
 }

@@ -7,12 +7,14 @@ data class MeResponse(
 	val id: String,
 	val nome: String,
 	val email: String,
-	val tipoPerfil: TipoPerfil
+	val tipoPerfil: TipoPerfil,
+	val planoPreferido: String? = null
 )
 
 fun Usuario.toMeResponse(): MeResponse = MeResponse(
 	id = id!!,
 	nome = nome,
 	email = email,
-	tipoPerfil = tipoPerfil
+	tipoPerfil = tipoPerfil,
+	planoPreferido = planoPreferido
 )

@@ -1,5 +1,7 @@
 package com.studioflow.backend.asaas
 
+import com.studioflow.backend.asaas.dto.AsaasAssinaturaRequest
+import com.studioflow.backend.asaas.dto.AsaasAssinaturaResponse
 import com.studioflow.backend.asaas.dto.AsaasClienteRequest
 import com.studioflow.backend.asaas.dto.AsaasClienteResponse
 import com.studioflow.backend.asaas.dto.AsaasCobrancaRequest
@@ -68,6 +70,17 @@ class AsaasClient(
 		return chamar("criar cobrança") {
 			restClient.post().uri("/payments").contentType(MediaType.APPLICATION_JSON)
 				.body(request).retrieve().body(AsaasCobrancaResponse::class.java)
+		}
+	}
+
+	fun criarAssinatura(request: AsaasAssinaturaRequest): AsaasAssinaturaResponse? {
+		if (!configurado()) {
+			log.warn("ASAAS_API_KEY não configurada — assinatura não criada")
+			return null
+		}
+		return chamar("criar assinatura") {
+			restClient.post().uri("/subscriptions").contentType(MediaType.APPLICATION_JSON)
+				.body(request).retrieve().body(AsaasAssinaturaResponse::class.java)
 		}
 	}
 

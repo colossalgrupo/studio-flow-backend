@@ -18,7 +18,10 @@ data class Usuario(
 	@Indexed val passwordResetToken: String? = null,
 	val passwordResetExpiresAt: Instant? = null,
 	val passwordChangedAt: Instant? = null,
-	// Cliente Asaas do usuário quando ele paga algo (cobrança do agendamento) — criado
-	// sob demanda na primeira cobrança, não no cadastro (ver AsaasPaymentGateway).
-	val asaasCustomerId: String? = null
+	// Cliente Asaas do usuário quando ele paga algo (cobrança do agendamento, ou a
+	// mensalidade da própria plataforma) — criado sob demanda, não no cadastro.
+	val asaasCustomerId: String? = null,
+	// Plano escolhido no formulário de assinatura do site institucional, antes de
+	// existir estabelecimento — usado pra pré-selecionar o plano no onboarding.
+	val planoPreferido: String? = null
 )

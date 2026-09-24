@@ -19,5 +19,10 @@ data class RegisterRequest(
 	val senha: String,
 
 	@field:NotNull(message = "Tipo de perfil é obrigatório")
-	val tipoPerfil: TipoPerfil
+	val tipoPerfil: TipoPerfil,
+
+	/** Plano escolhido no formulário de assinatura (opcional) — usado só como preferência
+	 * pra pré-selecionar o plano no onboarding do estabelecimento, depois da verificação
+	 * de e-mail. Não ativa nada sozinho. */
+	val planoPreferido: String? = null
 )
